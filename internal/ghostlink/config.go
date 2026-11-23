@@ -74,14 +74,16 @@ func ResolveTransportPreset(preset string) (TransportMapping, error) {
 }
 
 // IdentityTLSConfig is the panel-owned REALITY-like node identity. PublicKey
-// is delivered in subscriptions; PrivateKey remains inside ghostlinkd config.
+// is delivered in subscriptions; PrivateKey and TargetAddress remain inside
+// ghostlinkd config.
 type IdentityTLSConfig struct {
-	ServerName string `json:"serverName"`
-	ClientID   string `json:"clientId"`
-	Secret     string `json:"secret"`
-	PublicKey  string `json:"publicKey"`
-	PrivateKey string `json:"privateKey"`
-	ShortID    string `json:"shortId"`
+	ServerName    string `json:"serverName"`
+	TargetAddress string `json:"targetAddress,omitempty"`
+	ClientID      string `json:"clientId"`
+	Secret        string `json:"secret"`
+	PublicKey     string `json:"publicKey"`
+	PrivateKey    string `json:"privateKey"`
+	ShortID       string `json:"shortId"`
 }
 
 // Settings is the protocol-specific object stored in Inbound.Settings.
@@ -141,11 +143,12 @@ type ManagementConfig struct {
 }
 
 type ManagementIdentityTLS struct {
-	ServerName string `json:"server_name"`
-	ClientID   string `json:"client_id"`
-	Secret     string `json:"secret"`
-	PrivateKey string `json:"private_key"`
-	ShortID    string `json:"short_id"`
+	ServerName    string `json:"server_name"`
+	TargetAddress string `json:"target_address,omitempty"`
+	ClientID      string `json:"client_id"`
+	Secret        string `json:"secret"`
+	PrivateKey    string `json:"private_key"`
+	ShortID       string `json:"short_id"`
 }
 
 type LocalControlConfig struct {
@@ -328,6 +331,9 @@ func validateIdentityTLS(identity *IdentityTLSConfig) error {
 	if err := validateIdentityName("identityTls.serverName", identity.ServerName); err != nil {
 		return err
 	}
+	if err := validateIdentityTargetAddress(identity.TargetAddress); err != nil {
+		return err
+	}
 	if err := validateNodeClientID(identity.ClientID); err != nil {
 		return err
 	}
@@ -390,6 +396,27 @@ func subtleBytesEqual(a, b []byte) bool {
 func validateIdentityName(field, value string) error {
 	if value == "" || strings.TrimSpace(value) != value || strings.ContainsAny(value, ":/\\ \t\r\n") {
 		return fmt.Errorf("%s must be a hostname without a scheme, port, path or whitespace", field)
+	}
+	return nil
+}
+
+func validateIdentityTargetAddress(value string) error {
+	if value == "" {
+		return nil
+	}
+	if strings.TrimSpace(value) != value {
+		return errors.New("identityTls.targetAddress must not contain surrounding whitespace")
+	}
+	host, portText, err := net.SplitHostPort(value)
+	if err != nil {
+		return fmt.Errorf("identityTls.targetAddress must be a fixed host:port: %w", err)
+	}
+	if host == "" {
+		return errors.New("identityTls.targetAddress host is empty")
+	}
+	port, err := strconv.ParseUint(portText, 10, 16)
+	if err != nil || port == 0 {
+		return errors.New("identityTls.targetAddress port must be between 1 and 65535")
 	}
 	return nil
 }
@@ -641,11 +668,12 @@ func buildDesiredStateWithPolicies(
 	}
 	if settings.IdentityTLS != nil {
 		config.IdentityTLS = &ManagementIdentityTLS{
-			ServerName: settings.IdentityTLS.ServerName,
-			ClientID:   settings.IdentityTLS.ClientID,
-			Secret:     settings.IdentityTLS.Secret,
-			PrivateKey: settings.IdentityTLS.PrivateKey,
-			ShortID:    settings.IdentityTLS.ShortID,
+			ServerName:    settings.IdentityTLS.ServerName,
+			TargetAddress: settings.IdentityTLS.TargetAddress,
+			ClientID:      settings.IdentityTLS.ClientID,
+			Secret:        settings.IdentityTLS.Secret,
+			PrivateKey:    settings.IdentityTLS.PrivateKey,
+			ShortID:       settings.IdentityTLS.ShortID,
 		}
 	}
 	encoded, err := json.Marshal(config)

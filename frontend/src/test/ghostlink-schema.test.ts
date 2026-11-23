@@ -124,6 +124,25 @@ describe('GhostLink inbound schema', () => {
     ).toBe(false);
   });
 
+  it('accepts optional targetAddress host:port and rejects invalid values', () => {
+    for (const valid of ['', '127.0.0.1:8443', '[::1]:8443', 'localhost:8443']) {
+      expect(
+        GhostLinkInboundSettingsSchema.safeParse({
+          ...settings,
+          identityTls: { ...settings.identityTls, targetAddress: valid },
+        }).success,
+      ).toBe(true);
+    }
+    for (const invalid of [' 127.0.0.1:8443', '127.0.0.1', ':8443', '127.0.0.1:0', '127.0.0.1:70000']) {
+      expect(
+        GhostLinkInboundSettingsSchema.safeParse({
+          ...settings,
+          identityTls: { ...settings.identityTls, targetAddress: invalid },
+        }).success,
+      ).toBe(false);
+    }
+  });
+
   it('serializes no Xray stream or sniffing fields', () => {
     const parsed = InboundFormSchema.parse({
       ...settings,

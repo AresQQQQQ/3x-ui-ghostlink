@@ -87,6 +87,14 @@ export default function GhostLinkFields() {
       </FormField>
 
       <FormField
+        name={['settings', 'identityTls', 'targetAddress']}
+        label={t('pages.inbounds.form.ghostlink.targetAddress')}
+        tooltip={t('pages.inbounds.form.ghostlink.targetAddressHint')}
+      >
+        <Input placeholder="127.0.0.1:8443" />
+      </FormField>
+
+      <FormField
         name={['settings', 'identityTls', 'clientId']}
         label={t('pages.inbounds.form.ghostlink.identityClientId')}
         tooltip={t('pages.inbounds.form.ghostlink.identityClientIdHint')}

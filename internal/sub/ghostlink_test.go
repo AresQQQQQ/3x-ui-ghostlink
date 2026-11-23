@@ -36,6 +36,7 @@ func seedGhostLinkSubscriptionPreset(t *testing.T, subID, preset string) *model.
 		"transportPreset": "` + preset + `",
 		"identityTls": {
 			"serverName": "www.speedtest.net",
+			"targetAddress": "127.0.0.1:8443",
 			"clientId": "node-client",
 			"secret": "` + testIdentitySecret + `",
 			"privateKey": "` + testIdentityPrivate + `",
@@ -134,6 +135,9 @@ func TestGhostLinkClashSubscriptionUsesNativeOutbound(t *testing.T) {
 	for _, forbidden := range []string{
 		"/etc/ghostlink/fullchain.pem",
 		"/etc/ghostlink/privkey.pem",
+		"127.0.0.1:8443",
+		"target-address",
+		"targetAddress",
 		testIdentityPrivate,
 		"type: socks5",
 		"type: vless",

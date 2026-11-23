@@ -403,3 +403,69 @@ func TestBuildDesiredStateRejectsNodeScopeAndRelativeStatePath(t *testing.T) {
 		t.Fatal("relative state database path was accepted")
 	}
 }
+
+func TestIdentityTLSTargetAddressValidationAndPassthrough(t *testing.T) {
+	settings := validSettings(t)
+	settings.TransportPreset = PresetH2Capsule
+	settings.CertificateFile = ""
+	settings.PrivateKeyFile = ""
+	settings.IdentityTLS = testIdentityTLS(t)
+	settings.IdentityTLS.TargetAddress = "127.0.0.1:8443"
+
+	inbound := &model.Inbound{
+		Id:       12,
+		Protocol: model.GhostLink,
+		Enable:   true,
+		Listen:   "0.0.0.0",
+		Port:     443,
+		Settings: marshalSettings(t, settings),
+	}
+	state, err := BuildDesiredState(inbound, filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatalf("valid targetAddress rejected: %v", err)
+	}
+	if state.Config.IdentityTLS == nil || state.Config.IdentityTLS.TargetAddress != "127.0.0.1:8443" {
+		t.Fatalf("TargetAddress not passed through: %#v", state.Config.IdentityTLS)
+	}
+	protected, err := state.ProtectedJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(protected), `"target_address": "127.0.0.1:8443"`) {
+		t.Fatalf("protected JSON missing target_address: %s", protected)
+	}
+
+	// Empty TargetAddress must remain omitted.
+	settings.IdentityTLS.TargetAddress = ""
+	inbound.Settings = marshalSettings(t, settings)
+	state, err = BuildDesiredState(inbound, filepath.Join(t.TempDir(), "state.db"))
+	if err != nil {
+		t.Fatalf("empty targetAddress rejected: %v", err)
+	}
+	protected, err = state.ProtectedJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(protected), "target_address") {
+		t.Fatalf("empty target_address should be omitted: %s", protected)
+	}
+
+	for _, invalid := range []string{
+		" 127.0.0.1:8443",
+		"127.0.0.1",
+		":8443",
+		"127.0.0.1:0",
+		"127.0.0.1:99999",
+		"127.0.0.1:abc",
+	} {
+		bad := validSettings(t)
+		bad.TransportPreset = PresetH2
+		bad.CertificateFile = ""
+		bad.PrivateKeyFile = ""
+		bad.IdentityTLS = testIdentityTLS(t)
+		bad.IdentityTLS.TargetAddress = invalid
+		if _, err := ParseSettings(marshalSettings(t, bad)); err == nil {
+			t.Errorf("invalid targetAddress %q was accepted", invalid)
+		}
+	}
+}

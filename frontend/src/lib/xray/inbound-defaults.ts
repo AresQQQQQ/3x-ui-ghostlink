@@ -354,6 +354,7 @@ export function createDefaultGhostLinkInboundSettings(): GhostLinkInboundSetting
     transportPreset: 'h2',
     identityTls: {
       serverName: 'www.speedtest.net',
+      targetAddress: '',
       clientId: 'node-client',
       secret: '',
       publicKey: '',

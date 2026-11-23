@@ -28,6 +28,27 @@ function isIdentityHostname(value: string): boolean {
   );
 }
 
+function isIdentityTargetAddress(value: string): boolean {
+  if (value === '') return true;
+  if (value.trim() !== value || /\s/.test(value)) return false;
+  let host = '';
+  let portText = '';
+  if (value.startsWith('[')) {
+    const end = value.indexOf(']:');
+    if (end <= 1) return false;
+    host = value.slice(1, end);
+    portText = value.slice(end + 2);
+  } else {
+    const colon = value.lastIndexOf(':');
+    if (colon <= 0 || value.indexOf(':') !== colon) return false;
+    host = value.slice(0, colon);
+    portText = value.slice(colon + 1);
+  }
+  if (!host || !/^\d+$/.test(portText)) return false;
+  const port = Number(portText);
+  return Number.isInteger(port) && port >= 1 && port <= 65535;
+}
+
 function isNodeClientID(value: string): boolean {
   if (value.length < 1 || value.length > 128 || value.trim() !== value) return false;
   return Array.from(value).every((char) => {
@@ -56,6 +77,10 @@ export const GhostLinkIdentityTLSSchema = z.object({
   serverName: z
     .string()
     .refine(isIdentityHostname, 'pages.inbounds.form.ghostlink.targetSniInvalid'),
+  targetAddress: z
+    .string()
+    .refine(isIdentityTargetAddress, 'pages.inbounds.form.ghostlink.targetAddressInvalid')
+    .optional(),
   clientId: z
     .string()
     .refine(isNodeClientID, 'pages.inbounds.form.ghostlink.identityClientIdInvalid'),
